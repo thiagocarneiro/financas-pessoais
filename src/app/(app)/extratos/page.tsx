@@ -1,10 +1,31 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Upload, FileText, CheckCircle, AlertCircle, Loader2, Trash2, RefreshCw,
+} from "lucide-react";
+import { formatDateBR } from "@/lib/currency";
+
+const SOURCE_LABELS: Record<string, string> = {
+  santander_bank: "Extrato Santander",
+  santander_mastercard: "Santander MasterCard",
+  itau_visa: "Itau Visa",
+};
+
+interface Statement {
+  id: string;
+  fileName: string;
+  source: string;
+  status: string;
+  createdAt: string;
+  transactionCount?: number;
+}
 
 interface UploadResult {
   statementId: string;
@@ -14,17 +35,22 @@ interface UploadResult {
   errors: string[];
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  santander_bank: "Extrato Santander",
-  santander_mastercard: "Fatura Santander MasterCard",
-  itau_visa: "Fatura Itau Visa",
-};
-
 export default function ExtratosPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<UploadResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [statements, setStatements] = useState<Statement[]>([]);
+
+  // Fetch statement history on mount
+  useEffect(() => {
+    fetchStatements();
+  }, []);
+
+  async function fetchStatements() {
+    // We don't have a list endpoint yet, so we'll use a simple approach
+    // The statements are loaded from the upload results for now
+  }
 
   const handleUpload = useCallback(async (files: FileList | File[]) => {
     setUploading(true);
@@ -59,18 +85,14 @@ export default function ExtratosPage() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      if (e.dataTransfer.files.length > 0) {
-        handleUpload(e.dataTransfer.files);
-      }
+      if (e.dataTransfer.files.length > 0) handleUpload(e.dataTransfer.files);
     },
     [handleUpload]
   );
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files.length > 0) {
-        handleUpload(e.target.files);
-      }
+      if (e.target.files && e.target.files.length > 0) handleUpload(e.target.files);
     },
     [handleUpload]
   );
@@ -83,10 +105,7 @@ export default function ExtratosPage() {
       <Card>
         <CardContent className="pt-6">
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
@@ -113,15 +132,15 @@ export default function ExtratosPage() {
                   PDF (faturas Santander/Itau), CSV ou XLS (extrato Santander)
                 </p>
                 <label className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
-                    Selecionar Arquivos
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,.csv,.xls,.xlsx"
-                      className="hidden"
-                      onChange={handleFileInput}
-                    />
-                  </label>
+                  Selecionar Arquivos
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.csv,.xls,.xlsx"
+                    className="hidden"
+                    onChange={handleFileInput}
+                  />
+                </label>
               </div>
             )}
           </div>
@@ -138,7 +157,7 @@ export default function ExtratosPage() {
         </Card>
       )}
 
-      {/* Results */}
+      {/* Upload Results */}
       {results.length > 0 && (
         <Card>
           <CardHeader>

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParsedStatement, ParsedTransaction } from "./types";
+import { repairJson } from "./json-repair";
 
 const anthropic = new Anthropic();
 
@@ -52,8 +53,8 @@ export async function parseSantanderCCPDF(
   pdfText: string
 ): Promise<ParsedStatement> {
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8000,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 16000,
     messages: [
       {
         role: "user",
@@ -67,14 +68,8 @@ export async function parseSantanderCCPDF(
     throw new Error("Claude nao retornou texto");
   }
 
-  // Extract JSON from response (may be wrapped in markdown code block)
-  let jsonStr = textBlock.text;
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1];
-  }
-
-  const data = JSON.parse(jsonStr.trim());
+  const repaired = repairJson(textBlock.text);
+  const data = JSON.parse(repaired);
 
   const transactions: ParsedTransaction[] = data.transactions.map(
     (t: any) => ({

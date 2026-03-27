@@ -127,7 +127,7 @@ Responda APENAS com JSON:
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 200,
       messages: [{ role: "user", content: prompt }],
     });
@@ -137,11 +137,14 @@ Responda APENAS com JSON:
       throw new Error("No text response");
     }
 
-    let jsonStr = textBlock.text;
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonStr = jsonMatch[1];
+    let jsonStr = textBlock.text.trim();
+    const firstBrace = jsonStr.indexOf("{");
+    const lastBrace = jsonStr.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
 
-    const result = JSON.parse(jsonStr.trim());
+    const result = JSON.parse(jsonStr);
 
     return {
       categorySlug: result.category_slug,

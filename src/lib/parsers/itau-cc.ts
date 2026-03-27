@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParsedStatement, ParsedTransaction } from "./types";
+import { repairJson } from "./json-repair";
 
 const anthropic = new Anthropic();
 
@@ -55,8 +56,10 @@ Responda APENAS com JSON valido no formato:
 export async function parseItauCCPDF(
   pdfText: string
 ): Promise<ParsedStatement> {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  // Use streaming for large Itau invoices to avoid timeout
+  let fullText = "";
+  const stream = anthropic.messages.stream({
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 16000,
     messages: [
       {
@@ -66,18 +69,21 @@ export async function parseItauCCPDF(
     ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "text_delta"
+    ) {
+      fullText += event.delta.text;
+    }
+  }
+
+  if (!fullText) {
     throw new Error("Claude nao retornou texto");
   }
 
-  let jsonStr = textBlock.text;
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1];
-  }
-
-  const data = JSON.parse(jsonStr.trim());
+  const repaired = repairJson(fullText);
+  const data = JSON.parse(repaired);
 
   const transactions: ParsedTransaction[] = data.transactions.map(
     (t: any) => ({

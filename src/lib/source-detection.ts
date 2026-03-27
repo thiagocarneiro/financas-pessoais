@@ -23,8 +23,8 @@ export function detectSource(
     if (lower.includes("fatura_itau") || lower.startsWith("fatura_itau")) {
       return "itau_visa";
     }
-    // fatura_YYYYMM.pdf pattern = Santander
-    if (/fatura[_ ]?\d{6}/.test(lower)) {
+    // fatura_YYYYMM.pdf or "fatura _YYYYMM.pdf" (with space) = Santander
+    if (/fatura[_ ]*\d{6}/.test(lower)) {
       return "santander_mastercard";
     }
   }

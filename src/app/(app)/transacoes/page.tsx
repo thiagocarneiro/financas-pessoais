@@ -14,8 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MonthSelector } from "@/components/dashboard/month-selector";
+import { EditCategoryModal } from "@/components/edit-category-modal";
 import { formatBRL, formatDateBR } from "@/lib/currency";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -53,6 +54,7 @@ export default function TransacoesPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [editModal, setEditModal] = useState<{ id: string; category?: string; description: string } | null>(null);
   const limit = 30;
 
   useEffect(() => {
@@ -152,24 +154,26 @@ export default function TransacoesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {t.categoryName ? (
-                        <Badge
-                          variant="secondary"
-                          style={{
-                            backgroundColor: t.categoryColor
-                              ? `${t.categoryColor}20`
-                              : undefined,
-                            color: t.categoryColor || undefined,
-                            borderColor: t.categoryColor
-                              ? `${t.categoryColor}40`
-                              : undefined,
-                          }}
-                        >
-                          {t.categoryName}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Sem categoria</Badge>
-                      )}
+                      <button
+                        className="inline-flex items-center gap-1 group"
+                        onClick={() => setEditModal({ id: t.id, category: t.categorySlug, description: t.merchantName || t.description })}
+                      >
+                        {t.categoryName ? (
+                          <Badge
+                            variant="secondary"
+                            style={{
+                              backgroundColor: t.categoryColor ? `${t.categoryColor}20` : undefined,
+                              color: t.categoryColor || undefined,
+                              borderColor: t.categoryColor ? `${t.categoryColor}40` : undefined,
+                            }}
+                          >
+                            {t.categoryName}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Sem categoria</Badge>
+                        )}
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      </button>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-muted-foreground">
@@ -224,6 +228,26 @@ export default function TransacoesPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editModal && (
+        <EditCategoryModal
+          open={!!editModal}
+          onClose={() => setEditModal(null)}
+          transactionId={editModal.id}
+          currentCategory={editModal.category}
+          description={editModal.description}
+          onSaved={() => {
+            // Refresh transactions
+            setPage(page);
+            const params = new URLSearchParams({ month: yearMonth, page: String(page), limit: String(limit) });
+            if (search) params.set("search", search);
+            fetch(`/api/transactions?${params}`)
+              .then((r) => r.json())
+              .then((d) => { setTransactions(d.transactions); setTotal(d.total); });
+          }}
+        />
       )}
     </div>
   );
